@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stock Technical Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f8f8f6; --bg3: #f1f0eb;
+    --text: #1a1a18; --text2: #6b6b67;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --radius: 8px; --radius-lg: 12px;
+    --green: #16a34a; --red: #dc2626; --blue: #2563eb; --purple: #7c3aed; --amber: #f59e0b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1a1a18; --bg2:#242422; --bg3:#2e2e2b; --text:#f0efe8; --text2:#9b9b97; --border:rgba(255,255,255,0.1); --border2:rgba(255,255,255,0.2); }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; padding: 1rem; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: var(--text2); margin-bottom: 1.25rem; }
+  .card { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 16px; margin-bottom: 12px; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  select, button, input { height: 36px; font-size: 13px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: var(--bg2); color: var(--text); padding: 0 10px; outline: none; font-family: inherit; }
+  button { cursor: pointer; } button:hover { opacity: .8; }
+  button.primary { background: var(--blue); color: #fff; border-color: var(--blue); font-weight: 500; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .mc { background: var(--bg2); border-radius: var(--radius); padding: 9px 12px; }
+  .ml { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+  .mv { font-size: 18px; font-weight: 500; }
+  .up { color: var(--green); } .dn { color: var(--red); }
+  .sl { font-size: 11px; font-weight: 600; color: var(--text2); margin: 10px 0 4px; letter-spacing:.06em; text-transform:uppercase; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--text2); margin-bottom: 5px; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .ld { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .ll { width:16px; height:2px; border-radius:1px; flex-shrink:0; }
+  .cw { position: relative; width: 100%; }
+  .rec { display:flex; align-items:flex-start; gap:10px; padding:11px 14px; border-radius:var(--radius); font-size:13px; font-weight:500; border:0.5px solid; margin-bottom:10px; line-height:1.5; }
+  .rbuy { background:#f0fdf4; border-color:#86efac; color:#15803d; }
+  .rsell { background:#fff1f2; border-color:#fda4af; color:#be123c; }
+  .rhold { background:var(--bg2); border-color:var(--border); color:var(--text2); }
+  .cr { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+  .cc { font-size:11px; padding:3px 10px; border-radius:6px; border:0.5px solid transparent; }
+  .sr { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 6px; }
+  .badge { font-size:12px; padding:3px 11px; border-radius:99px; font-weight:500; }
+  .bbuy { background:#dcfce7; color:#15803d; }
+  .bsell { background:#fee2e2; color:#b91c1c; }
+  .bneu { background:var(--bg2); color:var(--text2); border:0.5px solid var(--border); }
+  .ap { background:var(--bg2); border-radius:var(--radius-lg); border:0.5px solid var(--border); padding:14px; margin-bottom:14px; }
+  .apt { font-size:13px; font-weight:500; margin-bottom:10px; }
+  .ai { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px; }
+  .af { display:flex; flex-direction:column; gap:4px; }
+  .af label { font-size:11px; color:var(--text2); }
+  input.w110 { width:110px; } input.w150 { width:150px; }
+  .al { display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto; }
+  .ai2 { display:flex; align-items:center; justify-content:space-between; padding:8px 11px; border-radius:var(--radius); border:0.5px solid; font-size:12px; gap:8px; }
+  .aa { background:#f0fdf4; border-color:#86efac; color:#15803d; }
+  .ab2 { background:#fff1f2; border-color:#fda4af; color:#be123c; }
+  .at { background:#fefce8; border-color:#fde68a; color:#92400e; }
+  .adel { cursor:pointer; background:none; border:none; color:inherit; opacity:.6; font-size:15px; padding:0 2px; height:auto; }
+  .adel:hover { opacity:1; }
+  .rb { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text2); margin-bottom:12px; flex-wrap:wrap; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--green); display:inline-block; }
+  .pulse { animation:pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:.3;} }
+  .loading { text-align:center; padding:3rem 1rem; color:var(--text2); font-size:14px; }
+  .spin { display:inline-block; width:22px; height:22px; border:2px solid var(--border2); border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite; margin-bottom:10px; }
+  @keyframes spin { to{transform:rotate(360deg);} }
+  .err { color:var(--red); padding:1.5rem; font-size:13px; background:#fff1f2; border-radius:var(--radius); border:0.5px solid #fda4af; margin-bottom:12px; line-height:1.6; }
+  .disc { font-size:11px; color:var(--text2); margin-top:12px; line-height:1.6; padding-top:12px; border-top:0.5px solid var(--border); }
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); padding:11px 22px; border-radius:var(--radius); font-size:13px; font-weight:500; z-index:9999; display:none; white-space:nowrap; }
+  .tb { background:var(--green); color:#fff; } .ts { background:var(--red); color:#fff; } .ti { background:var(--blue); color:#fff; }
+  @media(max-width:580px){ .metrics{grid-template-columns:repeat(2,1fr);} input.w150{width:120px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📈 Stock Technical Dashboard</h1>
+  <p class="sub">RSI · MACD · Candlestick Patterns · Price Alerts &nbsp;·&nbsp; Live data via Yahoo Finance</p>
+  <div class="card">
+    <div class="top-bar">
+      <div class="controls">
+        <select id="ticker">
+          <option value="NVDA">NVDA — Nvidia</option>
+          <option value="TSLA">TSLA — Tesla</option>
+          <option value="AMD">AMD</option>
+          <option value="MSTR">MSTR — MicroStrategy</option>
+          <option value="PLTR">PLTR — Palantir</option>
+          <option value="META">META</option>
+          <option value="AAPL">AAPL — Apple</option>
+          <option value="AMZN">AMZN — Amazon</option>
+          <option value="GOOGL">GOOGL — Google</option>
+          <option value="MSFT">MSFT — Microsoft</option>
+          <option value="SPY">SPY — S&amp;P 500 ETF</option>
+        </select>
+        <select id="range">
+          <option value="60">60 days</option>
+          <option value="90" selected>90 days</option>
+          <option value="120">120 days</option>
+        </select>
+        <button class="primary" onclick="loadData()">Analyze ▶</button>
+      </div>
+      <span style="font-size:11px;color:var(--text2)">Data: Yahoo Finance</span>
+    </div>
+
+    <div id="ld" class="loading"><div class="spin"></div><br>Fetching market data…</div>
+    <div id="ed" class="err" style="display:none"></div>
+    <div id="main" style="display:none">
+      <div class="rb">
+        <span class="dot pulse"></span>
+        <span id="lu">Updating…</span>
+        <span style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <span>Auto-refresh 60s</span>
+          <button onclick="refreshPrice()" style="height:28px;font-size:11px;padding:0 10px;">↻ Now</button>
+        </span>
+      </div>
+      <div class="metrics" id="metrics"></div>
+      <div id="rec" class="rec rhold"></div>
+      <div class="cr" id="cr"></div>
+      <div class="ap">
+        <div class="apt">🔔 Price Alerts</div>
+        <div class="ai">
+          <div class="af"><label>Type</label><select id="at2"><option value="above">↑ Rises above</option><option value="below">↓ Falls below</option></select></div>
+          <div class="af"><label>Target price ($)</label><input type="number" id="ap2" class="w110" placeholder="e.g. 950" step="0.01" min="0"/></div>
+          <div class="af"><label>Note (optional)</label><input type="text" id="an" class="w150" placeholder="e.g. resistance"/></div>
+          <div class="af" style="justify-content:flex-end"><button onclick="addAlert()">+ Add alert</button></div>
+        </div>
+        <div class="al" id="alist"><span style="font-size:12px;color:var(--text2)">No alerts set. Add one above.</span></div>
+      </div>
+      <div class="sl">Price · Candlesticks · 20-day MA</div>
+      <div class="legend">
+        <span><span class="ld" style="background:var(--green)"></span>Bullish</span>
+        <span><span class="ld" style="background:var(--red)"></span>Bearish</span>
+        <span><span class="ll" style="background:var(--blue)"></span>20d MA</span>
+        <span><span class="ld" style="background:var(--green)"></span>▲ Buy</span>
+        <span><span class="ld" style="background:var(--red)"></span>▼ Sell</span>
+        <span><span class="ll" style="background:var(--amber)"></span>Alert</span>
+      </div>
+      <div class="cw" style="height:310px"><canvas id="pc"></canvas></div>
+      <div class="sl" style="margin-top:8px">Volume</div>
+      <div class="cw" style="height:72px"><canvas id="vc"></canvas></div>
+      <div class="sl" style="margin-top:8px">RSI (14) — Overbought &gt;70 · Oversold &lt;30</div>
+      <div class="legend">
+        <span><span class="ll" style="background:var(--purple)"></span>RSI</span>
+        <span><span class="ll" style="background:var(--red);opacity:.5"></span>OB 70</span>
+        <span><span class="ll" style="background:var(--green);opacity:.5"></span>OS 30</span>
+      </div>
+      <div class="cw" style="height:115px"><canvas id="rc"></canvas></div>
+      <div class="sl" style="margin-top:8px">MACD (12,26,9) — Crossovers signal momentum shifts</div>
+      <div class="legend">
+        <span><span class="ll" style="background:var(--blue)"></span>MACD</span>
+        <span><span class="ll" style="background:var(--red)"></span>Signal</span>
+        <span><span class="ld" style="background:var(--green);border-radius:2px"></span>Hist+</span>
+        <span><span class="ld" style="background:var(--red);border-radius:2px"></span>Hist−</span>
+      </div>
+      <div class="cw" style="height:115px"><canvas id="mc2"></canvas></div>
+      <div class="sl" style="margin-top:8px">Candlestick patterns (last 5 candles)</div>
+      <div class="sr" id="sl2"></div>
+      <div class="disc">⚠️ <strong>Educational only — not financial advice.</strong> Always set a stop-loss. Signals are probabilities, not guarantees. Consult a licensed advisor before trading.</div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+let CH={}, AL=[], CP=null, CT='NVDA', RT=null, CD=[];
+const fmt=(n,d=2)=>n!=null?'$'+n.toFixed(d):'—';
+const fv=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':String(n);
+const pct=(a,b)=>((b-a)/a*100).toFixed(2);
+const dk=()=>matchMedia('(prefers-color-scheme:dark)').matches;
+const gc=()=>dk()?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
+const tc=()=>dk()?'#9ca3af':'#6b7280';
+
+function toast(msg,type='i',dur=5500){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast t'+type; t.style.display='block';
+  clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none',dur);
+}
+
+function ma(arr,p){return arr.map((_,i)=>i<p-1?null:arr.slice(i-p+1,i+1).reduce((s,v)=>s+v,0)/p);}
+
+function rsi(cls,p=14){
+  const r=[];
+  for(let i=0;i<cls.length;i++){
+    if(i<p){r.push(null);continue;}
+    let g=0,l=0;
+    for(let j=i-p+1;j<=i;j++){const d=cls[j]-cls[j-1];d>0?g+=d:l+=Math.abs(d);}
+    const ag=g/p,al=l/p;
+    r.push(al===0?100:parseFloat((100-100/(1+ag/al)).toFixed(2)));
+  }
+  return r;
+}
+
+function macd(cls,f=12,s=26,sig=9){
+  function ema(arr,p){
+    const k=2/(p+1),o=[];
+    for(let i=0;i<arr.length;i++){
+      if(i<p-1){o.push(null);continue;}
+      if(i===p-1){o.push(arr.slice(0,p).reduce((a,v)=>a+v,0)/p);continue;}
+      o.push(arr[i]*k+o[i-1]*(1-k));
+    }
+    return o;
+  }
+  const ef=ema(cls,f),es=ema(cls,s);
+  const ml=ef.map((v,i)=>v!=null&&es[i]!=null?parseFloat((v-es[i]).toFixed(4)):null);
+  const vm=ml.filter(v=>v!=null),sr=ema(vm,sig),sl=[];let vi=0;
+  for(let i=0;i<ml.length;i++){if(ml[i]==null){sl.push(null);}else{sl.push(sr[vi]!=null?parseFloat(sr[vi].toFixed(4)):null);vi++;}}
+  const h=ml.map((v,i)=>v!=null&&sl[i]!=null?parseFloat((v-sl[i]).toFixed(4)):null);
+  return{ml,sl,h};
+}
+
+function patterns(cds){
+  const pts=[],n=cds.length;
+  for(let i=Math.max(2,n-5);i<n;i++){
+    const c=cds[i],p=cds[i-1],pp=cds[i-2];
+    const body=Math.abs(c.close-c.open),range=c.high-c.low;
+    const up=c.close>c.open,pu=p.close>p.open,ppu=pp.close>pp.open;
+    const uw=c.high-Math.max(c.open,c.close),lw=Math.min(c.open,c.close)-c.low;
+    if(range>0&&body<range*0.1) pts.push({name:'Doji',type:'neutral',i});
+    if(body>0&&lw>body*2&&uw<body*0.5) pts.push({name:up?'Hammer':'Hanging man',type:up?'buy':'sell',i});
+    if(body>0&&uw>body*2&&lw<body*0.5) pts.push({name:!up?'Shooting star':'Inv. hammer',type:!up?'sell':'neutral',i});
+    if(up&&!pu&&c.open<p.close&&c.close>(p.open+p.close)/2) pts.push({name:'Bullish engulfing',type:'buy',i});
+    if(!up&&pu&&c.open>p.close&&c.close<(p.open+p.close)/2) pts.push({name:'Bearish engulfing',type:'sell',i});
+    if(!ppu&&!pu&&up&&c.close>pp.open) pts.push({name:'Morning star',type:'buy',i});
+    if(ppu&&pu&&!up&&c.close<pp.open) pts.push({name:'Evening star',type:'sell',i});
+  }
+  const seen=new Set();
+  return pts.filter(p=>{if(seen.has(p.name))return false;seen.add(p.name);return true;});
+}
+
+function addAlert(){
+  const type=document.getElementById('at2').value;
+  const price=parseFloat(document.getElementById('ap2').value);
+  const note=document.getElementById('an').value.trim();
+  if(isNaN(price)||price<=0){toast('Enter a valid price','i');return;}
+  AL.push({id:Date.now(),type,price,note,triggered:false});
+  document.getElementById('ap2').value=''; document.getElementById('an').value='';
+  renderAlerts(); rebuildPrice();
+  toast(`Alert: ${type==='above'?'↑ above':'↓ below'} ${fmt(price)}${note?' · '+note:''}`, 'i');
+}
+function removeAlert(id){AL=AL.filter(a=>a.id!==id);renderAlerts();rebuildPrice();}
+function renderAlerts(){
+  const el=document.getElementById('alist');
+  if(!AL.length){el.innerHTML='<span style="font-size:12px;color:var(--text2)">No alerts set. Add one above.</span>';return;}
+  el.innerHTML=AL.map(a=>{
+    const dist=CP!=null?(a.type==='above'?(CP>=a.price?'✓ Hit':'$'+(a.price-CP).toFixed(2)+' away'):(CP<=a.price?'✓ Hit':'$'+(CP-a.price).toFixed(2)+' away')):'';
+    return`<div class="ai2 ${a.triggered?'at':a.type==='above'?'aa':'ab2'}">
+      <span>${a.triggered?'✓ Triggered · ':''}<strong>${a.type==='above'?'↑':'↓'} ${fmt(a.price)}</strong>${a.note?' · '+a.note:''}</span>
+      <span style="display:flex;align-items:center;gap:8px">${dist?`<span style="opacity:.7;font-size:11px">${dist}</span>`:''}<button class="adel" onclick="removeAlert(${a.id})">✕</button></span>
+    </div>`;
+  }).join('');
+}
+function checkAlerts(price){
+  AL.forEach(a=>{
+    if(a.triggered)return;
+    if(a.type==='above'&&price>=a.price){a.triggered=true;toast(`🔔 ${CT} hit ${fmt(price)} — above alert ${fmt(a.price)}${a.note?' ('+a.note+')':''}`, 'b', 8000);}
+    if(a.type==='below'&&price<=a.price){a.triggered=true;toast(`🔔 ${CT} hit ${fmt(price)} — below alert ${fmt(a.price)}${a.note?' ('+a.note+')':''}`, 's', 8000);}
+  });
+  renderAlerts();
+}
+
+async function fetchData(ticker, days){
+  const end=Math.floor(Date.now()/1000), start=end-days*86400;
+  const yurl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&period1=${start}&period2=${end}`;
+  const sources=[
+    yurl,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(yurl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(yurl)}`
+  ];
+  for(const url of sources){
+    try{
+      const r=await fetch(url,{signal:AbortSignal.timeout(9000)});
+      if(!r.ok) continue;
+      let j=await r.json();
+      if(j.contents) j=JSON.parse(j.contents);
+      const res=j.chart.result[0], ts=res.timestamp, q=res.indicators.quote[0];
+      const cds=ts.map((t,i)=>({
+        date:new Date(t*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+        open:q.open[i],high:q.high[i],low:q.low[i],close:q.close[i],volume:q.volume[i]
+      })).filter(c=>c.open&&c.close&&c.high&&c.low);
+      if(cds.length) return cds;
+    }catch(e){}
+  }
+  throw new Error('All data sources failed');
+}
+
+function destroyAll(){Object.values(CH).forEach(c=>c&&c.destroy());CH={};}
+
+function rebuildPrice(){
+  if(!CD.length)return;
+  if(CH.p)CH.p.destroy();
+  const lbs=CD.map(c=>c.date), cls=CD.map(c=>c.close), m20=ma(cls,20), pts=patterns(CD);
+  const bp=CD.map((c,i)=>pts.find(p=>p.type==='buy'&&p.i===i)?c.low*0.993:null);
+  const sp=CD.map((c,i)=>pts.find(p=>p.type==='sell'&&p.i===i)?c.high*1.007:null);
+  const ads=AL.map(a=>({data:CD.map(()=>a.price),type:'line',borderColor:'rgba(245,158,11,0.8)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false}));
+  CH.p=new Chart(document.getElementById('pc'),{
+    type:'bar',
+    data:{labels:lbs,datasets:[
+      {data:CD.map(c=>[c.low,c.high]),backgroundColor:CD.map(c=>c.close>=c.open?'rgba(22,163,74,0.15)':'rgba(220,38,38,0.15)'),borderColor:CD.map(c=>c.close>=c.open?'#16a34a':'#dc2626'),borderWidth:1,borderSkipped:false,barPercentage:0.35},
+      {data:CD.map(c=>[Math.min(c.open,c.close),Math.max(c.open,c.close)]),backgroundColor:CD.map(c=>c.close>=c.open?'#16a34a':'#dc2626'),borderColor:CD.map(c=>c.close>=c.open?'#16a34a':'#dc2626'),borderWidth:1,borderSkipped:false,barPercentage:0.65},
+      {data:m20,type:'line',borderColor:'#2563eb',borderWidth:1.5,pointRadius:0,tension:0.3,fill:false},
+      {data:bp,type:'scatter',pointStyle:'triangle',pointRadius:8,backgroundColor:'#16a34a',borderColor:'#16a34a'},
+      {data:sp,type:'scatter',pointStyle:'triangle',rotation:180,pointRadius:8,backgroundColor:'#dc2626',borderColor:'#dc2626'},
+      ...ads
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>{const c=CD[ctx.dataIndex];if(!c)return'';return[`O:${fmt(c.open)}  H:${fmt(c.high)}`,`L:${fmt(c.low)}  C:${fmt(c.close)}`];}}}},scales:{x:{ticks:{color:tc(),maxTicksLimit:8,font:{size:10}},grid:{color:gc()}},y:{position:'right',ticks:{color:tc(),callback:v=>'$'+v.toFixed(0),font:{size:10}},grid:{color:gc()}}}}
+  });
+}
+
+async function loadData(){
+  CT=document.getElementById('ticker').value.split(' ')[0];
+  const days=parseInt(document.getElementById('range').value);
+  document.getElementById('ld').style.display='block';
+  document.getElementById('ld').innerHTML='<div class="spin"></div><br>Fetching '+CT+' data…';
+  document.getElementById('ed').style.display='none';
+  document.getElementById('main').style.display='none';
+  destroyAll(); CD=[];
+  if(RT)clearInterval(RT);
+
+  try{ CD=await fetchData(CT,days); }
+  catch(e){
+    document.getElementById('ld').style.display='none';
+    document.getElementById('ed').style.display='block';
+    document.getElementById('ed').innerHTML=`<strong>Could not load ${CT} data.</strong><br><br>Possible reasons:<br>• Yahoo Finance is temporarily rate-limiting<br>• Your internet may be offline<br>• Invalid ticker symbol<br><br><strong>Fix:</strong> Wait 30 seconds and click Analyze again.`;
+    return;
+  }
+
+  document.getElementById('ld').style.display='none';
+  document.getElementById('main').style.display='block';
+
+  const cls=CD.map(c=>c.close), last=CD[CD.length-1], prev=CD[CD.length-2];
+  CP=last.close;
+  const r30=CD.slice(-30), chg=pct(prev.close,last.close), isUp=last.close>=prev.close;
+  const rv=rsi(cls), {ml,sl,h}=macd(cls);
+  const lr=rv.filter(v=>v!=null).slice(-1)[0];
+  const lh=h.filter(v=>v!=null).slice(-1)[0], ph=h.filter(v=>v!=null).slice(-2,-1)[0];
+  const mc=lh>0&&ph<=0?'bullish':lh<0&&ph>=0?'bearish':null;
+  const pts=patterns(CD), buys=pts.filter(p=>p.type==='buy').length, sells=pts.filter(p=>p.type==='sell').length;
+  let sc=0;
+  if(lr<30)sc+=2;else if(lr<45)sc+=1;else if(lr>70)sc-=2;else if(lr>55)sc-=1;
+  if(mc==='bullish')sc+=2;else if(mc==='bearish')sc-=2;else if(lh>0)sc+=1;else sc-=1;
+  sc+=buys; sc-=sells;
+  const av=Math.round(CD.slice(-5).reduce((s,c)=>s+c.volume,0)/5);
+
+  document.getElementById('metrics').innerHTML=`
+    <div class="mc"><div class="ml">Last close</div><div class="mv">${fmt(last.close)}</div></div>
+    <div class="mc"><div class="ml">Day change</div><div class="mv ${isUp?'up':'dn'}">${isUp?'+':''}${chg}%</div></div>
+    <div class="mc"><div class="ml">RSI (14)</div><div class="mv ${lr>70?'dn':lr<30?'up':''}">${lr!=null?lr.toFixed(1):'—'}</div></div>
+    <div class="mc"><div class="ml">MACD hist</div><div class="mv ${lh>0?'up':'dn'}">${lh!=null?lh.toFixed(3):'—'}</div></div>
+    <div class="mc"><div class="ml">30d high</div><div class="mv">${fmt(Math.max(...r30.map(c=>c.high)))}</div></div>
+    <div class="mc"><div class="ml">30d low</div><div class="mv">${fmt(Math.min(...r30.map(c=>c.low)))}</div></div>
+    <div class="mc"><div class="ml">Avg vol (5d)</div><div class="mv">${fv(av)}</div></div>
+  `;
+  document.getElementById('cr').innerHTML=[
+    {label:`RSI ${lr!=null?lr.toFixed(1):'—'}`,bg:lr>70?'#fee2e2':lr<30?'#dcfce7':'var(--bg2)',tx:lr>70?'#b91c1c':lr<30?'#15803d':'var(--text2)'},
+    {label:`MACD: ${mc?mc+' cross':lh>0?'positive':'negative'}`,bg:mc==='bullish'?'#dcfce7':mc==='bearish'?'#fee2e2':'var(--bg2)',tx:mc==='bullish'?'#15803d':mc==='bearish'?'#b91c1c':'var(--text2)'},
+    {label:`${buys} bullish pattern${buys!==1?'s':''}`,bg:'#dcfce7',tx:'#15803d'},
+    {label:`${sells} bearish pattern${sells!==1?'s':''}`,bg:'#fee2e2',tx:'#b91c1c'},
+  ].map(c=>`<span class="cc" style="background:${c.bg};color:${c.tx}">${c.label}</span>`).join('');
+
+  const rec=document.getElementById('rec');
+  if(sc>=3){rec.className='rec rbuy';rec.innerHTML='<span style="font-size:20px">▲</span><span>Strong bullish confluence — RSI, MACD, and patterns align upward. Watch for a confirmation candle before entering.</span>';}
+  else if(sc>=1){rec.className='rec rbuy';rec.innerHTML='<span style="font-size:20px">▲</span><span>Lean bullish — more signals pointing up. Consider a cautious entry with a defined stop-loss.</span>';}
+  else if(sc<=-3){rec.className='rec rsell';rec.innerHTML='<span style="font-size:20px">▼</span><span>Strong bearish confluence — multiple indicators point down. Consider reducing exposure or waiting for reversal.</span>';}
+  else if(sc<=-1){rec.className='rec rsell';rec.innerHTML='<span style="font-size:20px">▼</span><span>Lean bearish — more signals pointing down. Tighten stops or hold off on new entries.</span>';}
+  else{rec.className='rec rhold';rec.innerHTML='<span style="font-size:20px">—</span><span>Mixed signals — no clear edge yet. Wait for RSI, MACD, and a candlestick pattern to all align.</span>';}
+
+  document.getElementById('sl2').innerHTML=pts.length===0
+    ?'<span class="badge bneu">No strong patterns in last 5 candles</span>'
+    :pts.map(p=>`<span class="badge ${p.type==='buy'?'bbuy':p.type==='sell'?'bsell':'bneu'}">${p.name} ${p.type==='buy'?'▲':p.type==='sell'?'▼':'·'}</span>`).join('');
+
+  rebuildPrice();
+
+  if(CH.v)CH.v.destroy();
+  CH.v=new Chart(document.getElementById('vc'),{
+    type:'bar',data:{labels:CD.map(c=>c.date),datasets:[{data:CD.map(c=>c.volume),backgroundColor:CD.map(c=>c.close>=c.open?'rgba(22,163,74,0.45)':'rgba(220,38,38,0.45)'),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fv(ctx.raw)}}},scales:{x:{display:false},y:{position:'right',ticks:{color:tc(),callback:v=>fv(v),font:{size:9},maxTicksLimit:2},grid:{color:gc()}}}}
+  });
+
+  if(CH.r)CH.r.destroy();
+  CH.r=new Chart(document.getElementById('rc'),{
+    type:'line',data:{labels:CD.map(c=>c.date),datasets:[
+      {data:rv,borderColor:'#7c3aed',borderWidth:1.5,pointRadius:0,tension:0.3,fill:false},
+      {data:CD.map(()=>70),borderColor:'rgba(220,38,38,0.45)',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false},
+      {data:CD.map(()=>30),borderColor:'rgba(22,163,74,0.45)',borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc(),maxTicksLimit:8,font:{size:10}},grid:{color:gc()}},y:{position:'right',min:0,max:100,ticks:{color:tc(),stepSize:25,font:{size:10}},grid:{color:gc()}}}}
+  });
+
+  if(CH.m)CH.m.destroy();
+  CH.m=new Chart(document.getElementById('mc2'),{
+    type:'bar',data:{labels:CD.map(c=>c.date),datasets:[
+      {data:h,backgroundColor:h.map(v=>v==null?'transparent':v>=0?'rgba(22,163,74,0.6)':'rgba(220,38,38,0.6)'),borderWidth:0,order:2},
+      {data:ml,type:'line',borderColor:'#2563eb',borderWidth:1.5,pointRadius:0,tension:0.3,fill:false,order:1},
+      {data:sl,type:'line',borderColor:'#dc2626',borderWidth:1.2,pointRadius:0,tension:0.3,fill:false,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc(),maxTicksLimit:8,font:{size:10}},grid:{color:gc()}},y:{position:'right',ticks:{color:tc(),font:{size:9},maxTicksLimit:4,callback:v=>v.toFixed(2)},grid:{color:gc()}}}}
+  });
+
+  document.getElementById('lu').textContent=`Last: ${fmt(last.close)} · ${new Date().toLocaleTimeString()}`;
+  checkAlerts(last.close);
+  RT=setInterval(refreshPrice,60000);
+}
+
+async function refreshPrice(){
+  try{
+    const cds=await fetchData(CT,3);
+    if(cds.length){const p=cds[cds.length-1].close;CP=p;checkAlerts(p);document.getElementById('lu').textContent=`Last: ${fmt(p)} · ${new Date().toLocaleTimeString()}`;}
+  }catch(e){document.getElementById('lu').textContent='Refresh failed — retrying in 60s';}
+}
+
+loadData();
+</script>
+</body>
+</html>
